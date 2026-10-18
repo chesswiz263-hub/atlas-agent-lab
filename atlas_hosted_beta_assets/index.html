@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#0d1218" />
+  <meta name="description" content="ATLAS Agent Lab — evidence-first AI research workspace for science, mathematics and engineering." />
+  <title>ATLAS — Research intelligence</title>
+  <link rel="stylesheet" href="./atlas-chat.css" />
+  <script src="./atlas-chat.js" defer></script>
+</head>
+<body data-theme="dark">
+  <a class="skip-link" href="#main">Skip to conversation</a>
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar-top">
+        <a class="brand" href="./index.html" aria-label="ATLAS home">
+          <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 42 42" width="35" height="35" fill="none"><circle cx="21" cy="21" r="5" fill="currentColor"/><ellipse cx="21" cy="21" rx="17" ry="7.5" transform="rotate(-35 21 21)" stroke="currentColor" stroke-width="1.65"/><ellipse cx="21" cy="21" rx="17" ry="7.5" transform="rotate(35 21 21)" stroke="currentColor" stroke-width="1.65"/><circle cx="7.2" cy="18.4" r="2.2" fill="#84dccd"/></svg></span>
+          <span class="brand-name">ATLAS <small>AGENT LAB</small></span>
+          <span class="brand-suffix">1.9</span>
+        </a>
+        <button type="button" class="icon-btn sidebar-close" id="closeSidebar" aria-label="Close navigation">×</button>
+      </div>
+      <button type="button" class="new-chat" id="newChat"><span aria-hidden="true" class="plus-icon">＋</span><span>New research</span><span class="shortcut">⌘ K</span></button>
+      <div class="nav-group" aria-labelledby="workspaceHeading">
+        <div class="nav-heading" id="workspaceHeading">WORKSPACES</div>
+        <div class="workspace-list" id="workspaceList">
+          <button type="button" class="workspace active" data-workspace="research"><span class="work-icon">◈</span> Research <span class="ws-trail">↗</span></button>
+          <button type="button" class="workspace" data-workspace="physics"><span class="work-icon">⚛</span> Physics &amp; engineering</button>
+          <button type="button" class="workspace" data-workspace="math"><span class="work-icon">∑</span> Mathematics</button>
+          <button type="button" class="workspace" data-workspace="evidence"><span class="work-icon">▤</span> Evidence review</button>
+          <button type="button" class="workspace" data-workspace="quantitative"><span class="work-icon">◫</span> Quantitative analysis</button>
+          <button type="button" class="workspace" data-workspace="extraction"><span class="work-icon">⌁</span> Data extraction</button>
+        </div>
+      </div>
+      <div class="nav-group history-group" aria-labelledby="recentHeading">
+        <div class="section-label"><span class="nav-heading" id="recentHeading">RECENTS</span><button id="clearHistory" type="button" class="subtle-control" title="Clear local conversations" aria-label="Clear saved conversations">Clear</button></div>
+        <div class="chat-history" id="historyList"><p class="history-empty">Your conversations live here.</p></div>
+      </div>
+      <div class="sidebar-footer">
+        <a class="repo-link" href="https://github.com/chesswiz263-hub/atlas-agent-lab" target="_blank" rel="noopener noreferrer"><span class="footer-icon" aria-hidden="true">↗</span><span>GitHub repository</span><span class="external-mark">↗</span></a>
+        <button type="button" class="repo-link" id="themeToggle"><span class="footer-icon" aria-hidden="true">☼</span><span id="themeLabel">Light appearance</span><span class="external-mark">◐</span></button>
+        <div class="footer-profile"><span class="user-avatar">A</span><span><strong>ATLAS Lab</strong><small>Scientific workspace</small></span><span class="footer-menu" aria-hidden="true">•••</span></div>
+      </div>
+    </aside>
+    <div class="overlay" id="sidebarOverlay" hidden></div>
+    <div class="main-pane">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn menu-toggle" type="button" id="openSidebar" aria-label="Open navigation"><span>☰</span></button>
+          <div class="topbar-title"><span class="topbar-brand">ATLAS</span><span class="topbar-chevron">⌄</span><span class="topbar-subtitle" id="headerWorkspace">Research workspace</span></div>
+        </div>
+        <div class="topbar-right">
+          <button type="button" class="connection-status" id="connectionButton" title="View connection details"><span class="status-dot" id="statusDot"></span><span id="connectionLabel">Checking connection</span></button>
+          <button type="button" class="top-action" id="toolsButton"><span>Tools</span><span class="sliders" aria-hidden="true">☷</span></button>
+        </div>
+      </header>
+      <main id="main" class="conversation-area" tabindex="-1">
+        <div class="conversation-inner">
+          <section class="welcome" id="welcome">
+            <div class="welcome-symbol" aria-hidden="true"><svg viewBox="0 0 86 86" fill="none"><circle cx="43" cy="43" r="8" fill="currentColor"/><ellipse cx="43" cy="43" rx="36" ry="15" transform="rotate(-35 43 43)" stroke="currentColor" stroke-width="2.2"/><ellipse cx="43" cy="43" rx="36" ry="15" transform="rotate(35 43 43)" stroke="currentColor" stroke-width="2.2"/><circle cx="13.6" cy="37.4" r="4" fill="#A5EFE1"/></svg></div>
+            <div class="eyebrow">ATLAS · YOUR RESEARCH CO-PILOT</div>
+            <h1>Curiosity, meet <em>rigor.</em></h1>
+            <p class="hero-description">Explore scientific literature, investigate competing ideas, and work through complex problems—with the evidence in view.</p>
+            <div class="suggestion-grid" id="suggestions">
+              <button type="button" class="suggestion" data-prompt="Compare dark matter and modified gravity in explaining galaxy rotation curves."><span class="suggestion-icon">◈</span><strong>Compare theories</strong><small>Dark matter vs. modified gravity</small><span class="suggestion-arrow">↗</span></button>
+              <button type="button" class="suggestion" data-prompt="Integrate 3*x**2+2*x+1"><span class="suggestion-icon">∑</span><strong>Work through mathematics</strong><small>Integrate a polynomial</small><span class="suggestion-arrow">↗</span></button>
+              <button type="button" class="suggestion" data-prompt="Find scientific literature about gravitational waves and interferometers."><span class="suggestion-icon">⌕</span><strong>Explore the literature</strong><small>Gravitational wave detection</small><span class="suggestion-arrow">↗</span></button>
+              <button type="button" class="suggestion" data-prompt="What safeguards make AI agents reliable?"><span class="suggestion-icon">◇</span><strong>Inspect the safeguards</strong><small>Auditable and bounded agents</small><span class="suggestion-arrow">↗</span></button>
+            </div>
+          </section>
+          <div id="messages" class="messages" aria-live="polite" aria-relevant="additions"></div>
+        </div>
+      </main>
+      <div class="composer-zone">
+        <div class="composer-inner">
+          <div class="composer" id="composer">
+            <label class="sr-only" for="prompt">Ask ATLAS a question</label>
+            <textarea id="prompt" rows="2" maxlength="2000" placeholder="Ask a question about science, mathematics, or engineering…" aria-describedby="composerHint"></textarea>
+            <div class="composer-bottom">
+              <div class="composer-controls">
+                <label class="mode-select-wrap"><span class="mode-indicator">✦</span><span class="sr-only">Workspace:</span><select id="modeSelect" aria-label="Choose workspace"><option value="research">Research</option><option value="physics">Physics</option><option value="math">Mathematics</option><option value="evidence">Evidence</option><option value="quantitative">Quantitative</option><option value="extraction">Extraction</option></select><span class="select-arrow">⌄</span></label>
+                <span class="source-hint"><span class="hint-dot"></span> Evidence-first</span>
+              </div>
+              <button type="button" id="send" class="send-button" aria-label="Send message" title="Send message (Enter)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 18V5m0 0L6.5 10.5M12 5l5.5 5.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+            </div>
+          </div>
+          <div class="composer-hint" id="composerHint">ATLAS can make mistakes. Validate important conclusions and check the cited evidence. <span>Enter to send · Shift + Enter for newline</span></div>
+        </div>
+      </div>
+    </div>
+    <aside class="tools-panel" id="toolsPanel" aria-label="Research tools" aria-hidden="true">
+      <div class="panel-head"><div><small>ATLAS TOOLKIT</small><h2>Research tools</h2></div><button class="icon-btn close-tools" id="closeTools" aria-label="Close tools">×</button></div>
+      <p class="panel-intro">The same scientific engine, organized for focused tasks. Structured workspaces require the private backend.</p>
+      <div id="toolLinks" class="tool-links"></div>
+      <div class="tool-connection"><h3>Engine status</h3><p id="engineStatus">Checking…</p><p>On GitHub Pages the interface runs locally in your browser. The Python engine must be hosted separately and accessed through an authenticated, trusted server.</p><button type="button" class="secondary-button" id="retryConnection">Recheck connection</button></div>
+      <div class="panel-advanced"><h3>Optional model synthesis</h3><p>Disabled in this private beta until user quotas and cost controls are in place. No keys are entered in this site.</p><label for="provider">Provider</label><select id="provider"><option value="demo">Off — deterministic research</option></select><label for="model">Model ID (optional)</label><input type="text" id="model" maxlength="100" pattern="[A-Za-z0-9._:-]+" placeholder="Use server default" autocomplete="off"></div>
+      <div class="panel-note"><strong>Privacy</strong><p>Conversation history is stored only in this browser on this device. Do not enter sensitive research or credentials on a public shared computer.</p></div>
+    </aside>
+    <div class="tools-overlay" id="toolsOverlay" hidden></div>
+  </div>
+</body>
+</html>
