@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0e18">
+  <title>ATLAS — Unified Research</title>
+  <link rel="stylesheet" href="/static/science.css">
+  <script src="/static/workflow.js" defer></script>
+</head>
+<body><main class="shell">
+<header><div><a class="home" href="/">✳ ATLAS <small>AGENT INTELLIGENCE LAB</small></a>
+<p class="eyebrow">PRIVATE WORKSPACE / UNIFIED RESEARCH 1.5</p></div>
+<a href="/static/science.html">← Research laboratory</a></header>
+<section class="hero"><p class="eyebrow">PLAN · DISCOVER · CROSSCHECK · COMPUTE · REPORT</p>
+<h1>One question. <em>Auditable research.</em></h1>
+<p>ATLAS runs a bounded research workflow. Crosschecked publication identities, literal primary-text excerpts, theoretical comparisons, mathematical checks, and model interpretations receive different evidence labels. It will abstain rather than invent source support.</p></section>
+<div class="layout">
+<section class="panel input">
+<h2>Research workflow</h2>
+<label for="question">Research question</label>
+<textarea id="question" rows="5" maxlength="500" spellcheck="true">Compare dark matter and modified gravity predictions for galaxy rotation curves.</textarea>
+<div class="twocol">
+<div><label for="literature">Literature discovery</label><select id="literature"><option value="auto">Automatic</option><option value="on">Always</option><option value="off">Off</option></select></div>
+<div><label for="arxiv">arXiv metadata</label><select id="arxiv"><option value="auto">Automatic for physics</option><option value="on">Always</option><option value="off">Off</option></select></div></div>
+<label for="theories">Competing theories (JSON, optional)</label>
+<textarea id="theories" rows="6" spellcheck="false" placeholder='[{"name":"Theory A","predictions":[{"observable":"signal amplitude","condition":"under X","expected_direction":"increase"}]}]'></textarea>
+<p class="muted">Predictions and conditions must be supplied explicitly. Matched article passages indicate relevance, not that a theory is true or false.</p>
+<label for="dimensions">Dimensional checks (JSON array, optional)</label>
+<textarea id="dimensions" rows="3" spellcheck="false" placeholder='[{"expression":"F=mass*a","variable_units":{"F":"N","mass":"kg","a":"m/s**2"}}]'></textarea>
+<label for="symbolic">Symbolic checks (JSON array, optional)</label>
+<textarea id="symbolic" rows="3" spellcheck="false" placeholder='[{"operation":"integrate_polynomial","expression":"3*x**2+2*x+1"}]'></textarea>
+<label for="numerical">Numerical checks (JSON array, optional)</label>
+<textarea id="numerical" rows="3" spellcheck="false" placeholder='[{"kind":"kinetic_energy","inputs":{"mass_kg":2,"velocity_m_s":3}}]'></textarea>
+<div class="twocol">
+<div><label for="provider">Interpretation provider</label><select id="provider"><option value="demo">None (deterministic)</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option></select></div>
+<div><label for="model">Optional model ID</label><input id="model" maxlength="100" placeholder="Configured default"></div></div>
+<p class="muted">Selecting a model authorizes up to one provider synthesis request. Without primary passages, synthesis abstains. API credentials must already be configured on your server.</p>
+<label class="checkline"><input id="autoSymbolic" type="checkbox" checked> Detect simple explicit symbolic-math questions</label>
+<label for="token">Optional operator token</label><input id="token" type="password" autocomplete="off" placeholder="Only if ATLAS_API_TOKEN is enabled">
+<button id="run" type="button">▶ Run bounded research workflow</button>
+<p id="status" role="status">Ready. Runs on your authenticated private ATLAS backend.</p>
+</section>
+<section class="panel result"><h2>Research report</h2>
+<div id="answer" class="content"><p class="muted">Your traceable report will appear here.</p></div>
+<button id="export" type="button" disabled>Export complete JSON dossier ↓</button>
+</section></div>
+<section class="panel"><h2>Execution plan and trace</h2><div id="plan" class="cards"><p class="muted">No run yet.</p></div></section>
+<section class="panel"><h2>Primary text citation ledger</h2><div id="sources" class="cards"><p class="muted">No verified source locators yet.</p></div></section>
+<section class="panel"><h2>Publication discovery and theory comparisons</h2><div id="literatureResults" class="cards"><p class="muted">No literature run yet.</p></div></section>
+<section class="panel"><h2>Formal calculations</h2><div id="checks" class="cards"><p class="muted">No math tasks yet.</p></div></section>
+<footer>ATLAS v1.5 · A located quotation is not a verified scientific claim. arXiv metadata is not primary full text. Mathematical checks do not validate a physical model. The public Pages demo remains offline.</footer>
+</main></body></html>

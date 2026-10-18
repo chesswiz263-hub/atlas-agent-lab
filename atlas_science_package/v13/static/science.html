@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a0e18">
+  <title>ATLAS — Scientific Research</title>
+  <link rel="stylesheet" href="/static/science.css">
+  <script src="/static/science.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header><div><a class="home" href="/">✳ ATLAS <small>AGENT INTELLIGENCE LAB</small></a><p class="eyebrow">PRIVATE WORKSPACE / SCIENCE ENGINE 1.3</p></div><a href="/">← Agent workbench</a></header>
+    <section class="hero"><p class="eyebrow">LITERATURE · MATHEMATICS · EVIDENCE</p><h1>Research with a <em>source of truth.</em></h1><p>Discover real publications. Crosscheck DOI metadata, inspect verified-identity open-access repository text, test exact quotations, and compare measurable predictions across theories. Topical matches do not prove or disprove a theory.</p></section>
+    <div class="layout">
+      <section class="panel input">
+        <h2>Research question</h2>
+        <label for="question">Question</label><textarea id="question" rows="5" maxlength="500" placeholder="What does recent research suggest about the evidence for dark matter compared with modified gravity?">What does the research say about dark matter and modified Newtonian dynamics?</textarea>
+        <label for="hypotheses">Hypotheses or theories (comma separated)</label><input id="hypotheses" value="dark matter, modified Newtonian dynamics" maxlength="500">
+        <label for="structuredTheories">Structured competing theories (JSON, optional)</label>
+        <textarea id="structuredTheories" rows="8" placeholder='[{"name":"Theory A","predictions":[{"observable":"measured signal","condition":"under condition X","expected_direction":"increase"}]},{"name":"Theory B","predictions":[{"observable":"measured signal","condition":"under condition X","expected_direction":"decrease"}]}]'></textarea>
+        <p class="muted">Define 2–4 theories, each with 1–5 predictions. Each prediction needs an observable; optional condition and expected_direction (increase/decrease, present/absent, zero/nonzero, positive/negative, unchanged, unspecified). Contradictions are flagged only for identical specified conditions and opposing directions.</p>
+        <label class="checkline"><input id="interpretTheories" type="checkbox"> Optional model interpretation of source passages (extra provider call; not claim-verified)</label>
+        <label for="math">Mathematical expression (optional)</label><input id="math" placeholder="x**2 + 2*x + 1" maxlength="160">
+        <div class="twocol"><div><label for="mathOperation">Math operation</label><select id="mathOperation"><option value="simplify">Simplify</option><option value="differentiate">Differentiate</option><option value="verify_equation">Verify equation identity</option></select></div><div><label for="variable">Variable</label><input id="variable" value="x" maxlength="15"></div></div>
+        <div class="twocol"><div><label for="provider">Synthesis</label><select id="provider"><option value="demo">Discovery only (no model)</option><option value="openai">OpenAI (configured API key)</option><option value="anthropic">Anthropic (configured API key)</option><option value="gemini">Gemini (configured API key)</option></select></div><div><label for="model">Optional model ID</label><input id="model" placeholder="Use default"></div></div>
+        <label class="checkline"><input id="includePrimary" type="checkbox" checked> Attempt primary full-text verification (Europe PMC OA)</label>
+        <label for="quoteDoi">DOI to verify quotation against (optional)</label><input id="quoteDoi" placeholder="10.1234/your.article" maxlength="180">
+        <label for="quoteText">Exact quoted passage (optional)</label><textarea id="quoteText" rows="3" maxlength="320" placeholder="Paste a short quotation to check against retrieved article XML"></textarea>
+        <label for="token">Optional API token (session only)</label><input id="token" type="password" autocomplete="off" placeholder="ATLAS_API_TOKEN, if enabled">
+        <button id="run" type="button">▶ Research question</button><p id="status" role="status">Ready. Live literature lookup runs on your private ATLAS backend.</p>
+      </section>
+      <section class="panel result"><h2>Research dossier</h2><div id="answer" class="content"><p class="muted">Your grounded research results will appear here.</p></div><button id="export" type="button" disabled>Export JSON dossier ↓</button></section>
+    </div>
+    <section class="panel"><h2>Publication evidence</h2><div id="papers" class="cards"><p class="muted">No discovery results yet.</p></div></section>
+    <section class="panel"><h2>Competing-theory evidence matrix</h2><div id="theoryMatrix" class="cards"><p class="muted">Provide structured predictions to compare theories against verified-identity primary passages.</p></div></section>
+    <section class="panel"><h2>Hypothesis mentions, mathematical checks and exact quotations</h2><div id="comparisons" class="cards"><p class="muted">Theory mentions are never treated as proof for or against a theory.</p></div></section>
+    <footer>ATLAS v1.3 · Crossref checks publication identity, not the truth of scientific claims. The GitHub Pages public demonstration remains offline.</footer>
+  </main>
+</body>
+</html>

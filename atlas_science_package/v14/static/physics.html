@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a0e18"><title>ATLAS — Physics Laboratory</title><link rel="stylesheet" href="/static/science.css"><script src="/static/physics.js" defer></script></head>
+<body><main class="shell">
+<header><div><a class="home" href="/">✳ ATLAS <small>AGENT INTELLIGENCE LAB</small></a><p class="eyebrow">PRIVATE WORKSPACE / PHYSICS LAB 1.4</p></div><a href="/static/science.html">← Research workspace</a></header>
+<section class="hero"><p class="eyebrow">PREPRINT DISCOVERY · DIMENSIONS · SYMBOLIC CHECKS · NUMERICS</p><h1>Physics, with <em>reproducible checks.</em></h1><p>Search arXiv preprint metadata, check SI dimensions, derive bounded polynomial results, and run deterministic mechanics calculations. Publication metadata is not verified primary evidence.</p></section>
+<div class="layout"><section class="panel input">
+<h2>Experiment request</h2><label for="question">Research topic</label><textarea id="question" rows="3" maxlength="500">galaxy rotation curves dark matter</textarea>
+<label class="checkline"><input id="searchArxiv" type="checkbox" checked> Search arXiv for candidate papers (metadata only)</label>
+<label for="dimTasks">Dimensional checks · JSON array</label><textarea id="dimTasks" rows="6" spellcheck="false">[{"expression":"F = mass*acc","variable_units":{"F":"N","mass":"kg","acc":"m/s**2"}}]</textarea>
+<label for="symTasks">Symbolic checks · JSON array</label><textarea id="symTasks" rows="6" spellcheck="false">[{"expression":"3*x**2 + 2*x + 1","operation":"integrate_polynomial","variable":"x"},{"expression":"x**2 - 5*x + 6","operation":"solve_polynomial","variable":"x"}]</textarea>
+<label for="numTasks">Numerical calculations · JSON array</label><textarea id="numTasks" rows="5" spellcheck="false">[{"kind":"damped_oscillator_rk4","inputs":{"mass_kg":1,"spring_N_m":4,"damping_N_s_m":0.3,"x0_m":1,"v0_m_s":0,"dt_s":0.05,"steps":100}}]</textarea>
+<label for="token">Optional operator token</label><input id="token" type="password" autocomplete="off" placeholder="ATLAS_API_TOKEN if configured">
+<button id="run" type="button">▶ Run research checks</button><p id="status" role="status">Ready. Calculations run on your private ATLAS backend.</p>
+</section><section class="panel result"><h2>Reproducible dossier</h2><div id="summary" class="content"><p class="muted">Results will appear here.</p></div><button id="export" type="button" disabled>Export results JSON ↓</button></section></div>
+<section class="panel"><h2>arXiv preprint candidates</h2><div id="papers" class="cards"><p class="muted">No search yet.</p></div></section>
+<section class="panel"><h2>Mathematical and numerical checks</h2><div id="checks" class="cards"><p class="muted">No calculations yet.</p></div></section>
+<footer>ATLAS v1.4 · A matched formula or preprint listing cannot validate a physical claim. Use v1.3 for passage-level literature comparison.</footer>
+</main></body></html>

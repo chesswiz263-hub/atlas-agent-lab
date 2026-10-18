@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e18"><title>ATLAS — Claim Assessment</title>
+<link rel="stylesheet" href="/static/science.css"><script src="/static/claims.js" defer></script>
+</head><body><main class="shell">
+<header><div><a class="home" href="/">✳ ATLAS <small>AGENT INTELLIGENCE LAB</small></a>
+<p class="eyebrow">PRIVATE WORKSPACE / CLAIM ASSESSMENT 1.7</p></div>
+<a href="/static/decompose.html">← Decomposition</a></header>
+<section class="hero"><p class="eyebrow">CLAIM → EXCERPT → ROLE CUES → HUMAN REVIEW</p>
+<h1>Scientific claims. <em>Auditable evidence.</em></h1>
+<p>Search verified-identity primary-text passages, locate topical candidates for explicitly supplied claims, and optionally request model-proposed relations. Neither lexical overlap nor model output verifies a scientific conclusion.</p></section>
+<div class="layout"><section class="panel input"><h2>Investigation</h2>
+<label for="question">Research question</label><textarea id="question" rows="4" maxlength="500">Compare dark matter and modified gravity for galaxy rotation curves</textarea>
+<label for="claims">Explicit claims to examine (one per line, up to four)</label>
+<textarea id="claims" rows="5" maxlength="1400" spellcheck="true" placeholder="A dark matter halo can explain flat galaxy rotation curves.&#10;A modified-gravity model can explain flat galaxy rotation curves."></textarea>
+<p class="muted">Claims are never inferred from an unanswered question. Leave blank to inspect verified-source passages without asserting scientific conclusions.</p>
+<label for="subquestions">Optional follow-up subquestions (one per line, up to three)</label><textarea id="subquestions" rows="3" spellcheck="true" placeholder="What measurements of rotation curves constrain the models?"></textarea>
+<div class="twocol">
+<div><label for="literature">Literature</label><select id="literature"><option value="auto">Automatic</option><option value="on">On</option><option value="off">Off (no claims)</option></select></div>
+<div><label for="arxiv">arXiv preprint metadata</label><select id="arxiv"><option value="auto">Auto</option><option value="on">On</option><option value="off">Off</option></select></div>
+<div><label for="followups">Follow-up searches</label><select id="followups"><option value="2">Up to two</option><option value="1">One</option><option value="0">None</option></select></div>
+<div><label for="maxevidence">Passages per claim</label><select id="maxevidence"><option value="3">Three</option><option value="2">Two</option><option value="1">One</option></select></div>
+<div><label for="mode">Relationship suggestions</label><select id="mode"><option value="deterministic">Off (textual cues only)</option><option value="model_suggestions">Model suggestions (unverified)</option></select></div>
+<div><label for="provider">Model provider</label><select id="provider"><option value="demo">None</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option></select></div>
+</div>
+<label for="model">Model identifier (optional)</label><input id="model" maxlength="100" placeholder="Configured provider default">
+<label for="token">Access token (only if required by deployment)</label><input id="token" type="password" autocomplete="off">
+<p class="muted">Reserved bounds: ≤6 publication candidates, ≤4 primary-source attempts, ≤2 follow-up searches. At most one explicitly requested model call. Quotations and citation locators are crosschecked; suggested support/challenge labels are never scientifically verified.</p>
+<div class="actions"><button id="run" type="button">Assess claims</button><button id="export" type="button" disabled>Export JSON</button></div><p id="status" class="muted" role="status" aria-live="polite">Ready.</p>
+</section><section class="panel output"><h2>Assessment overview</h2><div id="summary"><p class="muted">Claim comparison and verification labels will appear here.</p></div></section></div>
+<div class="layout"><section class="panel"><h2>Claim-to-evidence matrix</h2><div id="matrix"></div></section>
+<section class="panel"><h2>Model suggestions · unverified</h2><div id="modelResults"></div></section></div>
+<div class="layout"><section class="panel"><h2>Crosschecked source-text ledger</h2><div id="ledger"></div></section>
+<section class="panel"><h2>Execution and budgets</h2><div id="trace"></div></section></div>
+<footer>ATLAS • Passage existence is not a scientific verdict. All relationships require independent expert review.</footer>
+</main></body></html>

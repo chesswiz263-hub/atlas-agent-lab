@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e18"><title>ATLAS — Quantitative Consistency</title>
+<link rel="stylesheet" href="/static/science.css"><script src="/static/quantitative.js" defer></script>
+</head><body><main class="shell">
+<header><div><a class="home" href="/">✳ ATLAS <small>AGENT INTELLIGENCE LAB</small></a>
+<p class="eyebrow">PRIVATE WORKSPACE / QUANTITATIVE RESEARCH 1.8</p></div>
+<a href="/static/claims.html">← Claim assessment</a></header>
+<section class="hero"><p class="eyebrow">PREDICTION → MEASUREMENT → UNITS → UNCERTAINTY → AUDIT</p>
+<h1>Quantitative consistency. <em>Explicit assumptions.</em></h1>
+<p>Compare user-entered numerical predictions with measurements only when the observable and conditions are identical. Convert supported units, propagate explicitly asserted Gaussian uncertainties, and keep scientific conclusions unverified.</p></section>
+<div class="layout"><section class="panel input"><h2>Comparisons</h2>
+<p class="muted">Each case requires the same exact observable and conditions on both sides. These labels are checked textually, not scientifically verified.</p>
+<div id="cases"></div>
+<div class="actions"><button id="add" type="button">Add comparison</button><button id="run" type="button">Calculate & audit</button><button id="export" type="button" disabled>Export JSON</button></div>
+<label for="research">Optional scientific research question (triggers bounded primary-text lookup, no AI model)</label>
+<textarea id="research" rows="3" maxlength="500" placeholder="Which published observations constrain the galactic rotation-curve speeds predicted by alternative gravity models?"></textarea>
+<label for="quotes">Optional exact source-quote checks (JSON array)</label>
+<textarea id="quotes" rows="4" spellcheck="false" placeholder='[{"case_id":"Q1","side":"measurement","citation_id":"B.P1.1","exact_quote":"Paste 20–240 exact characters found in the previous citation ledger"}]'></textarea>
+<p class="muted">Do a first research run to see citation IDs and available excerpts. Then enter exact quotes to validate locators. A verified quote does NOT validate numerical transcription. No model call is made.</p>
+<label for="token">Access token (only if required by deployment)</label><input id="token" type="password" autocomplete="off">
+<p id="status" class="muted" role="status" aria-live="polite">Ready. All values and measurement context must be supplied by you.</p>
+</section><section class="panel output"><h2>Consistency results</h2><div id="results"><p class="muted">Numerical results and explicit abstentions appear here.</p></div></section></div>
+<div class="layout"><section class="panel"><h2>Primary-text citation ledger</h2><div id="sources"></div></section>
+<section class="panel"><h2>Quote and execution audit</h2><div id="audit"></div></section></div>
+<footer>ATLAS • An arithmetic difference is not a scientific contradiction. Numerical inputs, units, and stochastic assumptions require independent review.</footer>
+</main></body></html>

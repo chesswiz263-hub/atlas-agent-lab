@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e18"><title>ATLAS — Scientific Data Extraction</title>
+<link rel="stylesheet" href="/static/science.css"><script src="/static/extraction.js" defer></script>
+</head><body><main class="shell">
+<header><div><a class="home" href="/">✳ ATLAS <small>AGENT INTELLIGENCE LAB</small></a>
+<p class="eyebrow">PRIVATE WORKSPACE / SCIENTIFIC DATA 1.9</p></div><a href="/static/quantitative.html">← Quantitative consistency</a></header>
+<section class="hero"><p class="eyebrow">PUBLICATIONS → EXACT SPANS → HUMAN REVIEW → VERIFIED ARITHMETIC</p>
+<h1>Extract numbers. <em>Keep the source.</em></h1>
+<p>Locate exact number–unit expressions inside checked full-text excerpts and preserve their DOI, paragraph and cryptographic fingerprint. You decide whether an excerpt describes a measurement or prediction and whether two quantities are comparable.</p></section>
+<div class="layout"><section class="panel input"><h2>Literature search</h2>
+<label for="question">Scientific research question</label><textarea id="question" rows="4" maxlength="500" placeholder="What primary studies report galaxy rotation speeds and quantitative model predictions?"></textarea>
+<label for="limit">Maximum numeric mentions (1–24)</label><input id="limit" type="number" min="1" max="24" value="16">
+<div class="actions"><button id="discover" type="button">Discover & extract</button><button id="export" type="button" disabled>Export JSON</button></div>
+<label for="token">Access token (only if required)</label><input id="token" type="password" autocomplete="off">
+<p id="status" role="status" aria-live="polite" class="muted">Ready. All extraction is literal; none of the numbers are scientifically interpreted automatically.</p></section>
+<section class="panel output"><h2>Source-anchored numerical mentions</h2><div id="candidates"><p class="muted">Run a literature search to locate eligible primary-text passages.</p></div></section></div>
+<div class="layout"><section class="panel input"><h2>Optional human-reviewed comparison</h2>
+<p class="muted">Select a prediction and measurement from the results above. ATLAS re-fetches the sources and re-checks the candidate IDs when comparing.</p>
+<label for="prediction">Prediction mention</label><select id="prediction"></select>
+<label for="measurement">Measurement mention</label><select id="measurement"></select>
+<label for="label">Comparison label</label><input id="label" type="text" maxlength="130" value="Published speed comparison">
+<label for="observable">Observable (human reviewed)</label><input id="observable" type="text" maxlength="140" placeholder="orbital speed">
+<label for="conditions">Identical conditions (human reviewed)</label><input id="conditions" type="text" maxlength="200" placeholder="same galaxy and radial position">
+<label for="uncertainty">Uncertainty model</label><select id="uncertainty"><option value="none">No statistical comparison</option><option value="independent_gaussian_1sigma">Independent Gaussian 1σ</option><option value="correlation_supplied_gaussian_1sigma">Gaussian 1σ with supplied correlation</option></select>
+<label for="correlation">Correlation ρ (only for correlated model)</label><input id="correlation" type="number" step="any" min="-1" max="1" placeholder="-1 to 1">
+<label><input type="checkbox" id="review"> I have reviewed the original excerpts and confirm both source roles, observable and experimental context.</label>
+<label><input type="checkbox" id="sigma"> If using a statistical model, I confirm both printed ± values are Gaussian 1σ uncertainties.</label>
+<div class="actions"><button id="compare" type="button" disabled>Compare reviewed mentions</button></div>
+</section><section class="panel output"><h2>Quantitative audit</h2><div id="comparison"><p class="muted">No comparison requested.</p></div></section></div>
+<footer>ATLAS · Literal source presence is not independent validation of experimental data. Tables, figures, ambiguous units and statistical assumptions require human review.</footer>
+</main></body></html>
