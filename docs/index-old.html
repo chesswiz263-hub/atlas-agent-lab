@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07101b">
+  <meta name="description" content="Try the ATLAS Agent Intelligence Lab public demo: inspect document retrieval, evidence audit, and research workflow directly in your browser.">
+  <meta name="referrer" content="no-referrer">
+  <title>ATLAS — Public Research Demo</title>
+  <link rel="icon" href="./demo/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./demo/styles.css">
+  <script defer src="./demo/corpus.js"></script>
+  <script defer src="./demo/engine.js"></script>
+  <script defer src="./demo/app.js"></script>
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Site navigation">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">A<span class="brand-dot"></span></span><div><div class="brand-name">ATLAS<span class="brand-sup">/ LAB</span></div><div class="brand-sub">AGENT INTELLIGENCE</div></div></div>
+      <div class="nav-caption">WORKSPACE</div>
+      <nav class="nav" aria-label="Demo sections">
+        <button class="nav-link active" type="button" data-tab="workbench" aria-current="page"><span class="nav-icon">⌘</span> Agent workbench <span class="nav-key">01</span></button>
+        <button class="nav-link" type="button" data-tab="knowledge"><span class="nav-icon">▤</span> Knowledge base <span class="nav-key">02</span></button>
+        <button class="nav-link" type="button" data-tab="evaluation"><span class="nav-icon">◫</span> Evaluation lab <span class="nav-key">03</span></button>
+      </nav>
+      <div class="sidebar-info"><div class="info-pulse"></div><span>Browser-only engine<br><strong>No API keys required</strong></span></div>
+      <div class="sidebar-bottom"><div class="version">ATLAS v1.0.0 <span>PUBLIC DEMO</span></div><a href="https://github.com/chesswiz263-hub/atlas-agent-lab" target="_blank" rel="noopener noreferrer" class="external-link">Explore source on GitHub <span aria-hidden="true">↗</span></a></div>
+    </aside>
+    <main id="main" class="main">
+      <header class="topbar"><div class="breadcrumb">ATLAS <span>/</span> <span id="breadcrumb-tab">Agent workbench</span></div><div class="top-right"><span class="online"><span class="online-dot"></span> SYSTEM READY</span><span class="session-tag">PUBLIC / SANDBOX</span></div></header>
+      <section class="hero">
+        <div class="eyebrow"><span class="eyebrow-line"></span> INTERACTIVE PUBLIC RELEASE <span class="separator">//</span> VERSION 1.0</div>
+        <h1>Intelligence, <span>under inspection.</span></h1>
+        <p>Ask a question. Follow the retrieval. Examine the evidence. A transparent, bounded evidence-retrieval workbench with explainable abstention and exportable research dossiers.</p>
+        <div class="hero-metrics" aria-label="Demo facts"><span><strong>03</strong> reference documents</span><i aria-hidden="true"></i><span><strong>04</strong> workflow stages</span><i aria-hidden="true"></i><span><strong>00</strong> external API calls</span></div>
+      </section>
+      <div class="truth-banner" role="note"><span class="truth-icon">i</span><div><strong>What you're using:</strong> a real, deterministic, browser-only retrieval demo—not a live LLM. Answers are copied from public sample documents, with source checks. Your questions stay in this tab. <a href="#about-demo" id="learn-link">How it works ↗</a></div></div>
+
+      <section id="view-workbench" class="view" aria-labelledby="workbench-title">
+        <div class="section-head"><div><div class="section-kicker">01 / THE WORKBENCH</div><h2 id="workbench-title">Run a research task</h2></div><span class="section-label">DETERMINISTIC ENGINE</span></div>
+        <div class="work-grid">
+          <div class="left-stack">
+            <div class="panel prompt-panel"><div class="panel-top"><span class="dot-cluster"><i></i><i></i><i></i></span><span>RESEARCH CONSOLE</span><span class="panel-id">INPUT_001</span></div><form id="prompt-form"><label for="question">What would you like to investigate?</label><textarea id="question" maxlength="320" rows="3" spellcheck="true" placeholder="e.g. What safeguards make AI agents reliable?"></textarea><div class="prompt-meta"><span>Try a question about the included reference documents.</span><span id="char-count">0 / 320</span></div><div class="examples-title">QUICK-START PROMPTS</div><div class="prompt-chips"><button type="button" class="chip" data-question="What safeguards make tool-using agents reliable?">Agent safeguards <span>↗</span></button><button type="button" class="chip" data-question="How does MCP expose tools to AI applications?">MCP integration <span>↗</span></button><button type="button" class="chip" data-question="Why does a citation not prove an answer is correct?">Citation validity <span>↗</span></button></div><div class="prompt-actions"><div class="secure-note"><span>◈</span> Runs entirely in your browser</div><button id="run-button" type="submit" class="primary-btn">Run analysis <span aria-hidden="true">↗</span></button></div><p class="form-error" id="form-error" aria-live="polite"></p></form></div>
+            <div class="panel trace-panel"><div class="panel-title-row"><div><span class="eyelabel">EXECUTION TRACE</span><h3>Inside the workflow</h3></div><span class="outline-badge" id="trace-state">WAITING</span></div><ol class="trace-list" id="trace-list" aria-live="polite"><li class="empty-trace">Run a task to inspect the four deterministic processing stages.</li></ol></div>
+            <div class="panel report-panel" id="report-panel"><div class="panel-title-row"><div><span class="eyelabel">RESEARCH REPORT</span><h3>Grounded response</h3></div><button id="export-dossier" class="subtle-btn" type="button">Export evidence dossier ↓</button><button id="copy-report" class="subtle-btn" type="button" disabled>Copy report ↗</button></div><div id="report-body" class="report-empty">Your report will appear here, with exact source excerpts and citation numbers.</div><div id="report-foot" class="report-foot"></div></div>
+          </div>
+          <aside class="right-stack" aria-label="Evidence inspector"><div class="panel inspector-panel"><div class="panel-title-row"><div><span class="eyelabel">SOURCE INSPECTOR</span><h3>Evidence registry</h3></div><span class="inspector-icon">⌕</span></div><div class="inspector-top"><span class="mini-graph" aria-hidden="true"><i style="height:21px"></i><i style="height:32px"></i><i style="height:18px"></i><i style="height:39px"></i><i style="height:27px"></i><i style="height:45px"></i><i style="height:32px"></i><i style="height:51px"></i><i style="height:36px"></i><i style="height:49px"></i></span><div><strong>12</strong><span>INDEXED PASSAGES</span></div></div><div id="evidence-list" class="evidence-list"><div class="evidence-empty">No sources inspected yet. Run a research task to see the supporting passages.</div></div></div><div class="panel limitations"><span class="eyelabel">RESEARCH INTEGRITY</span><h3>Designed to show its work.</h3><p>ATLAS's public sandbox prioritizes transparent retrieval over impressive-sounding answers. A stricter relevance gate declines incidental word matches; this still does not prove semantic relevance.</p><div class="limit-line"><span>Response type</span><strong>Extractive</strong></div><div class="limit-line"><span>Data source</span><strong>Sample corpus</strong></div><div class="limit-line"><span>API spending</span><strong>$0.00</strong></div></div></aside>
+        </div>
+      </section>
+
+      <section id="view-knowledge" class="view hidden" aria-labelledby="knowledge-title">
+        <div class="section-head"><div><div class="section-kicker">02 / KNOWLEDGE BASE</div><h2 id="knowledge-title">Explore the source material</h2></div><span class="section-label">3 PUBLIC DOCUMENTS</span></div>
+        <div class="panel content-panel"><p>These are the exact example guides shipped with ATLAS. The public demo indexes their 12 text passages in memory and never reads private documents. Expand any document to inspect its full contents.</p><div id="knowledge-list" class="knowledge-list"></div></div>
+      </section>
+
+      <section id="view-evaluation" class="view hidden" aria-labelledby="evaluation-title">
+        <div class="section-head"><div><div class="section-kicker">03 / EVALUATION LAB</div><h2 id="evaluation-title">Measure what the demo does</h2></div><span class="section-label">SMALL DEMO BENCHMARK</span></div>
+        <div class="panel content-panel eval-panel"><div class="eval-lead"><div><span class="eyelabel">SIX HAND-AUTHORED QUESTIONS</span><h3>Retrieval smoke test</h3><p>Checks whether the expected source appears in the top three results, and whether exact source snippets can be cited. These metrics do not measure truth or general intelligence.</p></div><button type="button" id="run-eval" class="primary-btn">Run evaluation ↗</button></div><div id="eval-output" class="eval-output"><p class="placeholder-eval">Run the benchmark to see per-question results and measurements.</p></div></div>
+      </section>
+
+      <section class="about" id="about-demo"><div><span class="section-kicker">UNDER THE HOOD</span><h2>Open by design.</h2><p>This static site runs a small lexical BM25 search engine, a four-stage deterministic workflow, and exact-quote checks in your browser. It does not load ATLAS's Python backend, run independent AI agents, call external services, remember your questions, or prove that statements are true.</p></div><a href="https://github.com/chesswiz263-hub/atlas-agent-lab" target="_blank" rel="noopener noreferrer" class="repo-btn">View complete source <span>↗</span></a></section>
+      <footer class="footer"><span>© 2026 ATLAS Agent Intelligence Lab</span><span>PUBLIC DEMO · v1.0.0 · NO AUTHENTICATION NEEDED</span></footer>
+    </main>
+  </div>
+</body>
+</html>
