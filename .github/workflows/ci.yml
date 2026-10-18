@@ -1,29 +1,38 @@
+
 name: CI
 on:
   push:
   pull_request:
+
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
+
     steps:
       - uses: actions/checkout@v7
+
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Install
-        run: python -m pip install -e '.[dev]'
+        run: python -m pip install -e '.[dev,science]'
+
       - name: Critical static checks
         run: |
           python -m compileall -q src
           ruff check src tests --select E9,F821,F822,F823
+
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest -q tests
+
       - name: Browser demo tests (Node.js)
         run: |
           node --version
           node --check docs/demo/engine.js
           node --check docs/demo/app.js
           node --test tests/browser/*.test.cjs
+
