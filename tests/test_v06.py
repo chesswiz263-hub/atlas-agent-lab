@@ -4,14 +4,35 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+
 def test_static_site_is_self_contained():
-    html = (ROOT / 'docs/index.html').read_text(encoding='utf-8')
-    assert '<title>ATLAS — Public Research Demo</title>' in html
-    assert 'not a live LLM' in html
-    for asset in ('corpus.js', 'engine.js', 'app.js', 'styles.css', 'favicon.svg'):
-        assert (ROOT / f'docs/demo/{asset}').is_file()
-        assert './demo/' + asset in html
-    assert (ROOT / 'docs/.nojekyll').is_file()
+    """Check the v2.0 public chat homepage and retain legacy demo assets."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    docs = root / "docs"
+    html = (docs / "index.html").read_text(encoding="utf-8")
+
+    # Verify the new ATLAS v2.0 homepage
+    assert "<title>ATLAS — Research intelligence</title>" in html
+    assert 'href="./atlas-chat.css"' in html
+    assert 'src="./atlas-chat.js"' in html
+    assert 'id="messages"' in html
+    assert 'id="prompt"' in html
+
+    # Verify browser assets and original demo files
+    assert (docs / "atlas-chat.css").is_file()
+    assert (docs / "atlas-chat.js").is_file()
+    assert (docs / ".nojekyll").is_file()
+    assert (docs / "demo" / "engine.js").is_file()
+    assert (docs / "demo" / "app.js").is_file()
+
+    # Ensure demo limitations are communicated honestly
+    js = (docs / "atlas-chat.js").read_text(encoding="utf-8")
+    assert "Browser demo" in js
+    assert "GitHub Pages cannot execute the Python research engine" in js
+    assert "not a live scientific answer" in js
+
 
 
 def test_public_browser_files_do_not_contain_secret_placeholders_or_private_api_calls():
