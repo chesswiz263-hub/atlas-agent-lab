@@ -15,11 +15,12 @@ import time
 from collections import defaultdict, deque
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from atlas_conversation_v22 import ChatQuery, run_chat
 
 BASE = Path(__file__).resolve().parent
 SESSION_COOKIE = "atlas_beta_session"
@@ -38,7 +39,7 @@ small{color:#a3bac1}#error{color:#ffb2af;min-height:1.6em}</style></head>
 <button type='submit'>Unlock research</button></form><p id='error' role='alert'></p></main>
 <script>document.getElementById('f').addEventListener('submit',async e=>{e.preventDefault();const error=document.getElementById('error');error.textContent='';
 try{const r=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({password:document.getElementById('password').value})});
-if(!r.ok){error.textContent='Access denied or temporarily limited.';return;}location.assign('/static/atlas-chat.html');}
+if(!r.ok){error.textContent='Access denied or temporarily limited.';return;}location.assign('/static/atlas-chat-v22.html');}
 catch{error.textContent='Connection unavailable.';}});</script></body></html>"""
 
 class LoginRequest(BaseModel):
@@ -51,8 +52,8 @@ def create_app() -> FastAPI:
     if len(password) < 16 or len(secret) < 32:
         raise RuntimeError("Set ATLAS_BETA_PASSWORD (>=16 characters) and ATLAS_COOKIE_SECRET (>=32 characters) in host environment")
     static = BASE / "static"
-    if not (static / "atlas-chat.html").is_file() or not (static / "atlas-chat.js").is_file() or not (static / "atlas-chat.css").is_file():
-        raise RuntimeError("Missing static/atlas-chat.html, atlas-chat.js, or atlas-chat.css. Run prepare_atlas_hosted_beta.py")
+    if not (static / "atlas-chat-v22.html").is_file() or not (static / "atlas-chat-v22.js").is_file() or not (static / "atlas-chat-v22.css").is_file():
+        raise RuntimeError("Missing v2.2 chat assets; run install_atlas_v22.py")
 
     from atlas.api import create_app as create_atlas_app
     original = create_atlas_app()
@@ -103,7 +104,7 @@ def create_app() -> FastAPI:
 
     @app.middleware("http")
     async def protect_api(request: Request, call_next):
-        if not request.url.path.startswith("/api/science/"):
+        if not (request.url.path.startswith("/api/science/") or request.url.path == "/api/atlas/chat"):
             return await call_next(request)
         token = request.cookies.get(SESSION_COOKIE)
         if not validate_session(token):
@@ -132,7 +133,7 @@ def create_app() -> FastAPI:
         import json
         try:
             data = json.loads(raw)
-            if not isinstance(data, dict) or data.get("provider", "demo") != "demo":
+            if not isinstance(data, dict) or (request.url.path != "/api/atlas/chat" and data.get("provider", "demo") != "demo"):
                 return JSONResponse({"detail": "Paid synthesis is disabled for the hosted beta"}, status_code=403)
         except (ValueError, TypeError):
             return JSONResponse({"detail": "Invalid JSON"}, status_code=400)
@@ -150,11 +151,11 @@ def create_app() -> FastAPI:
 
     @app.get("/healthz")
     def healthz():
-        return {"status": "ok", "mode": "private_beta"}
+        return {"status": "ok", "mode": "private_beta", "model_enabled": os.getenv("ATLAS_LLM_ENABLED", "0") == "1"}
 
     @app.get("/")
     def home(request: Request):
-        return RedirectResponse("/static/atlas-chat.html" if validate_session(request.cookies.get(SESSION_COOKIE)) else "/login", status_code=303)
+        return RedirectResponse("/static/atlas-chat-v22.html" if validate_session(request.cookies.get(SESSION_COOKIE)) else "/login", status_code=303)
 
     @app.get("/login", response_class=HTMLResponse)
     def login_page():
@@ -179,7 +180,7 @@ def create_app() -> FastAPI:
         if not validate_session(token):
             return JSONResponse({"detail": "Sign in at /login"}, status_code=401,
                                 headers={"Cache-Control": "no-store"})
-        return JSONResponse({"csrf": csrf_for(token), "mode": "private_beta"},
+        return JSONResponse({"csrf": csrf_for(token), "mode": "private_beta", "model_enabled": os.getenv("ATLAS_LLM_ENABLED", "0") == "1"},
                             headers={"Cache-Control": "no-store"})
 
     @app.post("/auth/logout")
@@ -187,6 +188,14 @@ def create_app() -> FastAPI:
         response = JSONResponse({"status": "ok"})
         response.delete_cookie(SESSION_COOKIE, path="/")
         return response
+
+    @app.post("/api/atlas/chat")
+    async def conversation(query: ChatQuery = Body(...)):
+        return await run_chat(query)
+
+    @app.get("/static/atlas-chat.html")
+    def old_chat_redirect():
+        return RedirectResponse("/static/atlas-chat-v22.html", status_code=302)
 
     app.mount("/static", StaticFiles(directory=str(static), check_dir=True), name="static")
     return app
