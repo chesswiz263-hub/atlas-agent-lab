@@ -20,7 +20,8 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from atlas_conversation_v22 import ChatQuery, run_chat
+from atlas_conversation_v22 import ChatQuery
+from atlas_conversation_v23 import run_chat_v23 as run_chat
 
 BASE = Path(__file__).resolve().parent
 SESSION_COOKIE = "atlas_beta_session"
@@ -39,7 +40,7 @@ small{color:#a3bac1}#error{color:#ffb2af;min-height:1.6em}</style></head>
 <button type='submit'>Unlock research</button></form><p id='error' role='alert'></p></main>
 <script>document.getElementById('f').addEventListener('submit',async e=>{e.preventDefault();const error=document.getElementById('error');error.textContent='';
 try{const r=await fetch('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({password:document.getElementById('password').value})});
-if(!r.ok){error.textContent='Access denied or temporarily limited.';return;}location.assign('/static/atlas-chat-v22.html');}
+if(!r.ok){error.textContent='Access denied or temporarily limited.';return;}location.assign('/static/atlas-chat-v23.html');}
 catch{error.textContent='Connection unavailable.';}});</script></body></html>"""
 
 class LoginRequest(BaseModel):
@@ -52,7 +53,7 @@ def create_app() -> FastAPI:
     if len(password) < 16 or len(secret) < 32:
         raise RuntimeError("Set ATLAS_BETA_PASSWORD (>=16 characters) and ATLAS_COOKIE_SECRET (>=32 characters) in host environment")
     static = BASE / "static"
-    if not (static / "atlas-chat-v22.html").is_file() or not (static / "atlas-chat-v22.js").is_file() or not (static / "atlas-chat-v22.css").is_file():
+    if not (static / "atlas-chat-v23.html").is_file() or not (static / "atlas-chat-v23.js").is_file() or not (static / "atlas-chat-v23.css").is_file():
         raise RuntimeError("Missing v2.2 chat assets; run install_atlas_v22.py")
 
     from atlas.api import create_app as create_atlas_app
@@ -155,7 +156,7 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     def home(request: Request):
-        return RedirectResponse("/static/atlas-chat-v22.html" if validate_session(request.cookies.get(SESSION_COOKIE)) else "/login", status_code=303)
+        return RedirectResponse("/static/atlas-chat-v23.html" if validate_session(request.cookies.get(SESSION_COOKIE)) else "/login", status_code=303)
 
     @app.get("/login", response_class=HTMLResponse)
     def login_page():
@@ -195,7 +196,7 @@ def create_app() -> FastAPI:
 
     @app.get("/static/atlas-chat.html")
     def old_chat_redirect():
-        return RedirectResponse("/static/atlas-chat-v22.html", status_code=302)
+        return RedirectResponse("/static/atlas-chat-v23.html", status_code=302)
 
     app.mount("/static", StaticFiles(directory=str(static), check_dir=True), name="static")
     return app
