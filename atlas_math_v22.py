@@ -33,7 +33,7 @@ def parse_safe(source: str):
     try:
         parsed = ast.parse(text, mode='eval')
     except SyntaxError as e:
-        raise ValueError('Invalid expression syntax; use ** for powers and * for multiplication') from e
+        raise ValueError('Invalid math expression: remove non-mathematical instructions; use ^ or ** for powers and * for multiplication') from e
     seen = 0
     symbols: set[str] = set()
     fns = {k: getattr(s, k) for k in FUNCTIONS if k != 'abs'}
@@ -94,13 +94,97 @@ def _safe_name(name: str):
     return s.Symbol(name)
 
 
+def strip_explanation_request(question: str) -> str:
+    """Remove only recognizable *trailing* presentation requests.
+
+    Instructions such as 'and explain each step' are not mathematical syntax.
+    Keep the original expression intact; any unsupported content still fails
+    closed in the restricted SymPy parser rather than executing it.
+    """
+    text = question.strip().rstrip('?.! ')
+    suffixes = (
+        r'(?:(?:\s+and\s+)|(?:[.,;]\s*)|(?:\s+))'
+        r'(?:please\s+)?(?:explain|show|showing|list|include|provide)\s+'
+        r'(?:(?:me|us)\s+)?(?:(?:each|every|all|the|your)\s+)?'
+        r'(?:steps?|work|solution|derivation|reasoning)'
+        r'(?:\s+(?:clearly|step[- ]by[- ]step|in\s+detail))?$',
+        r'(?:(?:\s+and\s+)|(?:[.,;]\s*)|(?:\s+))'
+        r'(?:please\s+)?(?:show|explain|walk\s+(?:me\s+)?through)\s+'
+        r'(?:it\s+)?step[- ]by[- ]step$',
+        r'(?:(?:\s+and\s+)|(?:[.,;]\s*)|(?:\s+))'
+        r'(?:with|including)\s+(?:(?:a|the|detailed|full)\s+)?'
+        r'(?:step[- ]by[- ]step\s+)?(?:explanation|steps?|derivation|working)$',
+        r'\s+step[- ]by[- ]step$',
+    )
+    for _ in range(3):
+        original = text
+        for suffix in suffixes:
+            cleaned = re.sub(suffix, '', text, flags=re.I).strip().rstrip('?.! ')
+            if cleaned != text:
+                text = cleaned
+                break
+        if text == original:
+            break
+    return text
+
+
+def add_verified_integration_by_parts_steps(integrand, variable, step) -> None:
+    """Explain a bounded polynomial-times-sin/cos/exp integral with checked parts.
+
+    This only adds explanation. The authoritative antiderivative and final
+    verification remain in solve_task; unsupported forms use its fallback.
+    """
+    import sympy as s
+    trig_factors = (s.sin(variable), s.cos(variable), s.exp(variable))
+    original = integrand
+    remainder = integrand
+    accumulated = s.S.Zero
+    for _ in range(4):
+        term = None
+        for g in trig_factors:
+            coefficient = s.simplify(remainder / g)
+            if (coefficient.is_polynomial(variable)
+                and s.simplify(coefficient*g-remainder)==0):
+                term = (coefficient, g)
+                break
+        if term is None:
+            return
+        u, dv = term
+        v = s.integrate(dv, variable)
+        if s.simplify(s.diff(v,variable)-dv)!=0:
+            return
+        if s.degree(u,variable)==0:
+            terminal = s.simplify(u*v)
+            candidate = s.simplify(accumulated+terminal)
+            if s.simplify(s.diff(candidate,variable)-original)!=0:
+                return
+            step('Integrate the last remaining constant-times-function term.',
+                 f'{accumulated} + ({terminal}) = {candidate}', 'DIFFERENTIATION_CHECKED')
+            step('Differentiate the combined antiderivative to verify the original integrand.',
+                 f'd/d{variable} ({candidate}) = {original}', 'DIFFERENTIATION_CHECKED')
+            return
+        du = s.diff(u, variable)
+        new_accumulated = s.simplify(accumulated+u*v)
+        new_remainder = s.simplify(-du*v)
+        if s.simplify(s.diff(new_accumulated,variable)+new_remainder-original)!=0:
+            return
+        step('Choose the polynomial part as u and the trigonometric/exponential part as dv; differentiate u and integrate dv.',
+             f'u={u}; dv=({dv}) d{variable}; du=({du}) d{variable}; v={v}',
+             'SYMPY_DERIVATIVE_AND_ANTIDERIVATIVE_CHECKED')
+        step('Apply integration by parts: integral(u dv) = u*v - integral(v du).',
+             s.Add(new_accumulated,s.Integral(new_remainder,variable),evaluate=False),
+             'DIFFERENTIATION_IDENTITY_CHECKED')
+        accumulated = new_accumulated
+        remainder = new_remainder
+
+
 def interpret_math_query(question: str) -> dict[str, Any] | None:
     """Conservative, offline English-to-task parser. Unsupported wording abstains.
 
     The optional LLM translator can extend this via validated structured tasks;
     its proposed expressions still go through parse_safe and the math checker.
     """
-    q = question.strip().rstrip('?. ')
+    q = strip_explanation_request(question)
     q = re.sub(r'^(?:what is|can you calculate|please calculate|find|compute|evaluate)\s+(?:the\s+)?(?=(?:integral|derivative|partial derivative|limit|gradient|curl|divergence|series|sum|laplace transform|inverse laplace transform)\b)', '', q, flags=re.I)
     q = re.sub(r'^d/d([a-zA-Z])\s+(.+)$',r'differentiate \2 with respect to \1',q,flags=re.I)
 
@@ -331,6 +415,8 @@ def solve_task(task: dict[str, Any]) -> dict[str, Any]:
                                 step(f'Apply the reverse power rule to {term}: raise the exponent {power} by one and divide by the new exponent',anti,'TERM_ANTIDERIVATIVE_CHECKED')
                         if len(antiderivatives)==len(terms):
                             step('Add the separately integrated terms by linearity',s.Add(*antiderivatives),'LINEARITY_CHECKED')
+                if f.is_Mul:
+                    add_verified_integration_by_parts_steps(f,variable,step)
                 result=s.integrate(f,variable)
                 if result.has(s.Integral):raise ValueError('The integral is outside the symbolic solver’s coverage')
                 verification='DIFFERENTIATION_CHECKED' if s.simplify(s.diff(result,variable)-f)==0 else 'NOT_CHECKED'
