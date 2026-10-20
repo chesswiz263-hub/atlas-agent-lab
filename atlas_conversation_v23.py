@@ -17,6 +17,48 @@ from typing import Any
 
 import atlas_conversation_v22 as base
 
+# v2.3.1: keep explanatory prose out of the restricted symbolic input.
+# This adapter is intentionally presentation-only: no changes to the AST parser,
+# accepted mathematical functions, timeouts, formal solver or cost controls.
+from atlas_math_v22 import interpret_math_query as _original_interpret_math_query
+from atlas_math_v22 import strip_explanation_request as _original_strip_explanation
+
+# Only explicit trailing requests for an explanation are eligible for removal.
+# Crucially, no regex tries to infer where a mathematical expression ends.
+_REASON_SUFFIX = re.compile(
+    r'(?:\s+and\s+|[,;]\s*(?:and\s+)?)'
+    r'(?:please\s+)?(?:explain|describe|clarify|discuss|show|demonstrate)\s+'
+    r'(?:(?:why|how)\b.{0,220}|(?:the\s+)?(?:reasoning|intuition|method)\b.{0,220})$',
+    re.I | re.S,
+)
+
+
+def interpret_math_query_v231(question: str) -> dict | None:
+    """Parse a math request after removing only known *trailing* teaching requests.
+
+    The legacy parser is still authoritative for operation, variables and bounds;
+    its resulting expression is always checked by the original restricted worker.
+    Unknown wording fails closed rather than being removed heuristically.
+    """
+    q = question.strip()
+    if len(q) > 500:
+        return _original_interpret_math_query(q)
+    for _ in range(3):
+        q = _original_strip_explanation(q)
+        match = _REASON_SUFFIX.search(q.rstrip('?.! '))
+        if match is None:
+            break
+        candidate = q[:match.start()].strip().rstrip('?.! ')
+        if not candidate or _original_interpret_math_query(candidate) is None:
+            break
+        q = candidate
+    return _original_interpret_math_query(q)
+
+
+# v2.2's research dispatcher resolves this function at request time.
+# No changes to its authentication, model access or scientific-research route.
+base.interpret_math_query = interpret_math_query_v231
+
 
 SCIENCE_V23_INSTRUCTIONS = """You are ATLAS, an evidence-first scientific research assistant.
 Answer the exact scientific question in clear, natural language, using ONLY the provided,
