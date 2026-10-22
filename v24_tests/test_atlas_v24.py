@@ -142,11 +142,11 @@ def test_base_quota_reserves_before_provider(monkeypatch,tmp_path):
 def test_gateway_and_ui_are_versioned():
     root=Path(__file__).resolve().parents[1]
     if not (root/'atlas_hosted_beta_v24.reference.py').exists():return
-    gateway=(root/'atlas_hosted_beta_v24.reference.py').read_text()
+    gateway=(root/'atlas_hosted_beta_v24.reference.py').read_text(encoding='utf-8')
     assert 'run_chat_v24 as run_chat' in gateway
     assert 'csrf_for(token)' in gateway
     assert 'atlas-chat-v24.html' in gateway
-    js=(root/'v24_assets/atlas-chat-v24.js').read_text()
+    js=(root/'v24_assets/atlas-chat-v24.js').read_text(encoding='utf-8')
     assert 'atlas-source-' in js
     assert 'textContent' in js
 
