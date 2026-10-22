@@ -21,7 +21,8 @@ from fastapi.routing import APIRoute
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from atlas_conversation_v22 import ChatQuery
-from atlas_conversation_v24 import run_chat_v24 as run_chat, model_configuration
+from atlas_conversation_v241 import run_chat_v241 as run_chat
+from atlas_conversation_v24 import model_configuration
 
 BASE = Path(__file__).resolve().parent
 SESSION_COOKIE = "atlas_beta_session"
