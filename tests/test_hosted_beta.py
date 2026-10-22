@@ -44,8 +44,8 @@ def client(monkeypatch, tmp_path):
     import shutil
     base = tmp_path / 'static'
     base.mkdir(exist_ok=True)
-    for src, out in [('atlas-chat-v23.html','atlas-chat-v23.html'),('atlas-chat-v23.js','atlas-chat-v23.js'),('atlas-chat-v23.css','atlas-chat-v23.css')]:
-        shutil.copy2(SOURCE.parent/'v23_assets'/src,base/out)
+    for src, out in [('atlas-chat-v24.html','atlas-chat-v24.html'),('atlas-chat-v24.js','atlas-chat-v24.js'),('atlas-chat-v24.css','atlas-chat-v24.css')]:
+        shutil.copy2(SOURCE.parent/'v24_assets'/src,base/out)
     with TestClient(load_gateway(monkeypatch, tmp_path), base_url='https://testserver') as c:
         yield c
 
