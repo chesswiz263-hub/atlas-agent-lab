@@ -45,6 +45,24 @@ CMB_TITLE = re.compile(r'\bcmb\b|cosmic\s+microwave\s+background|\bwmap\b|'
                        r'\bplanck\b.*(?:\bcmb\b|microwave|power spectra|polarization|polarisation)', re.I)
 CMB_PASSAGE = re.compile(r'\bcmb\b|cosmic\s+microwave\s+background|'
                          r'\btemperature\s+anisotrop|\bpolariz|\bpolarisation|acoustic\s+peak', re.I)
+# The CMB category concerns *cosmological matter evidence*, not every
+# publication analyzing microwave maps. A paper about our local velocity,
+# kinematic dipole or map foregrounds does not satisfy this objective.
+CMB_DISTRACTOR_TITLE = re.compile(
+    r'local motion|solar system motion|peculiar velocity|kinematic dipole|'
+    r'our motion|aberration|dipolar modulation|dipole anisotrop|'
+    r'foreground|instrument calibrat|cosmic infrared|dust emission',re.I)
+CMB_EVIDENCE_TITLE = re.compile(
+    r'acoustic|power\s+spectr|\bspectra\b|likelihood|cosmological\s+paramet|'
+    r'matter\s+densit|cold\s+dark\s+matter|anisotrop\w*\s+measurements?|'
+    r'polariz\w*\s+(?:anisotrop|measurements?)|'
+    r'polaris\w*\s+(?:anisotrop|measurements?)',re.I)
+# Ranking and passage detection alone are not proof that a paper measures dark
+# matter. Retain quote-by-quote screening and explicitly mark missing support.
+CMB_TARGET_PASSAGE = re.compile(
+    r'acoustic|peak|power\s+spectr|\bspectra\b|cosmological\s+paramet|'
+    r'matter\s+densit|cold\s+dark\s+matter|\bcdm\b|\blambda.?cdm\b|'
+    r'polari[sz]ation\s+anisotrop|temperature\s+anisotrop',re.I)
 FALLBACK = {
     'cmb': 'Planck 2018 results V CMB power spectra likelihoods',
     'bullet_cluster': 'Bullet Cluster 1E0657 lensing X ray gas mass separation',
@@ -59,7 +77,14 @@ def _observational_title(work:dict,cat:str)->bool:
     if cat == 'mond':return 'mond' in lower or 'modified newton' in lower
     if CIB_TITLE.search(title) or any(x in lower for x in ('modified gravity', 'mond', 'review', 'perspective', 'bibliometric')):
         return False
-    if cat == 'cmb':return bool(CMB_TITLE.search(title))
+    if cat == 'cmb':
+        # Planck collaboration cosmological-parameter papers may omit the
+        # literal string CMB from their title; generic dipole/motion analyses
+        # must not be accepted merely because they mention CMB.
+        planck_parameters = ('planck' in lower and 'cosmological parameters' in lower)
+        return bool((CMB_TITLE.search(title) or planck_parameters) and
+                    CMB_EVIDENCE_TITLE.search(title) and
+                    not CMB_DISTRACTOR_TITLE.search(title))
     if cat == 'bullet_cluster':return any(x in lower for x in ('bullet cluster','1e0657','1e 0657'))
     if cat == 'cluster_lensing':return ('lens' in lower or 'shear' in lower) and any(x in lower for x in ('cluster', 'clash'))
     if cat == 'rotation_curves':return ('rotation' in lower or 'kinematic' in lower or 'velocity' in lower) and any(x in lower for x in ('galax', 'spiral', 'disk', 'sparc'))
@@ -68,7 +93,9 @@ def _observational_title(work:dict,cat:str)->bool:
 
 def _passage_is_category_specific(source:str,category:str)->bool:
     if category=='cmb':
-        return bool(CMB_PASSAGE.search(source)) and not bool(CIB_TITLE.search(source))
+        return (bool(CMB_PASSAGE.search(source)) and
+                bool(CMB_TARGET_PASSAGE.search(source)) and
+                not bool(CIB_TITLE.search(source)))
     if category=='bullet_cluster':
         lower=source.lower()
         return ('bullet' in lower or '1e0657' in lower) and ('gas' in lower or 'x-ray' in lower or 'lensing' in lower)
@@ -103,7 +130,12 @@ def original_score(work: dict, category: str) -> float:
     score -= sum(2.5 for marker in NOISE if marker in title)
     if category != 'mond' and ('mond' in title or 'modified gravity' in title):score -= 12
     if category == 'bullet_cluster' and ('1e 0657' in title or '1e0657' in title or 'bullet' in title):score += 8
-    if category == 'cmb' and ('planck' in title or 'wmap' in title or 'microwave' in title):score += 5
+    if category == 'cmb':
+        if 'planck' in title or 'wmap' in title or 'microwave' in title:score += 5
+        if 'power spectra' in title or 'power spectrum' in title:score += 12
+        if 'cosmological parameters' in title:score += 14
+        if 'acoustic' in title:score += 9
+        if CMB_DISTRACTOR_TITLE.search(title):score -= 40
     if category == 'rotation_curves' and 'rotation' in title:score += 5
     if category == 'cluster_lensing' and ('shear' in title or 'lensing' in title):score += 5
     if work.get('type') == 'article':score += 1
@@ -173,6 +205,9 @@ def _support_score(passage:str, category:dict, title:str) -> float:
     if any(x in source for x in ('recently, we', 'presented a detailed', 'derived radial profiles', 'et al.')):score -= .12
     if category['category'] != 'mond' and 'mond' in source and hits<4:score -= .3
     if 'review' in title.lower():score -= .2
+    if category['category']=='cmb':
+        if CMB_TARGET_PASSAGE.search(source):score += .32
+        if re.search(r'cold\s+dark\s+matter|matter\s+densit|\bcdm\b',source):score += .3
     return score
 
 
@@ -230,7 +265,7 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
     try:
         deadline=time.monotonic()+65
         bucket=defaultdict(list);found=set();unique_arxiv=set()
-        by_cat=defaultdict(list); fetched={}; attempted=set()
+        by_cat=defaultdict(list); fetched={}; attempted=set(); analyzed=set()
 
         async def discover(objective:dict, phrase:str)->None:
             if len(diagnostics['search_queries'])>=MAX_QUERIES+MAX_EXTRA_QUERIES or time.monotonic()>deadline-18:
@@ -272,6 +307,7 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
                     candidates=bucket.get(cat,[])
                     if rank>=len(candidates):continue
                     _,work,aid=candidates[rank]
+                    if (cat,aid) in analyzed:continue
                     if aid in fetched:
                         paper=fetched[aid]
                     elif aid in attempted:continue
@@ -286,6 +322,7 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
                     # Crucial: a retrieved *document* is not coverage if none of
                     # its excerpts makes category-specific scientific contact.
                     compatible=any(_support_score(p['text'][:500],objective,paper['title'])>=.30 for p in paper['passages'])
+                    analyzed.add((cat,aid))
                     if compatible:by_cat[cat].append(paper)
                     else:diagnostics['rejected_passages'][cat]=diagnostics['rejected_passages'].get(cat,0)+1
 
