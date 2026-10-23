@@ -51,7 +51,7 @@ async def run_chat_v26(query:ChatQuery) -> dict:
     ledger=evidence['citation_ledger'];diagnostics=evidence['diagnostics']
     required=diagnostics['categories_requested'];missing=diagnostics.get('categories_missing',required)
     model_conf=llm.model_configuration()
-    model_result=None;validation={'accepted':[],'checks':[]};model_attempted=False
+    model_result=None;validation={'accepted':[],'checks':[]};model_attempted=False;model_failure_type=None
     if ledger and model_conf['enabled']:
         # Only located source text is passed as evidence. History cannot create citations.
         payload={
@@ -69,7 +69,8 @@ async def run_chat_v26(query:ChatQuery) -> dict:
             validation=claims.check_claims(model_result.get('text',''),ledger)
         except Exception as exc:
             # Never reflect upstream credential-bearing error text in public outputs.
-            model_result={'error_type':type(exc).__name__}
+            model_failure_type=type(exc).__name__
+            model_result={'error_type':model_failure_type}
     accepted=validation['accepted']
     if accepted:
         answer=claims.render_answer(accepted,required,ledger)
@@ -77,7 +78,9 @@ async def run_chat_v26(query:ChatQuery) -> dict:
         synthesis_status='PARTIAL_OR_COMPLETE_TEXTUALLY_SCREENED_SYNTHESIS'
     elif ledger:
         answer=_reviewable_extracts(ledger,missing)
-        status='SOURCE_TEXT_LOCATED_MODEL_NOT_USED'
+        status=('SOURCE_TEXT_LOCATED_MODEL_DISABLED' if not model_conf['enabled'] else
+                'MODEL_CALL_UNAVAILABLE' if model_failure_type else
+                'MODEL_OUTPUT_REJECTED' if model_attempted else 'SOURCE_TEXT_LOCATED_MODEL_NOT_USED')
         synthesis_status='EVIDENCE_LOCATED_NO_ACCEPTED_CLAIMS'
     else:
         answer=_reviewable_extracts([],missing)
@@ -92,15 +95,15 @@ async def run_chat_v26(query:ChatQuery) -> dict:
                             'checks':validation['checks'],
                             'method':'exact excerpt quote, lexical support, numeric/negation and epistemic-class screening; NOT semantic entailment'},
         'claim_ledger':[{k:v for k,v in c.items() if k!='support_quote'} for c in accepted],
-        'research_diagnostics':{**diagnostics,'phase':evidence['status'],'model_attempted':model_attempted,
+        'research_diagnostics':{**diagnostics,'phase':evidence['status'],'model_attempted':model_attempted,'model_configuration_status':model_conf['status'],
                                 'categories_without_accepted_claims':missing_claim_categories,
                                 'note':'A source quotation or textual-support screen is not proof of scientific correctness.'},
         'model_usage':{'calls':int(bool(model_result and model_result.get('reservation'))),
                        'model':(model_result or {}).get('model'),
                        'estimated_cost_usd':(model_result or {}).get('estimated_cost_usd'),
-                       'usage':(model_result or {}).get('usage'),
+                       'usage':(model_result or {}).get('usage'),'error_type':model_failure_type,
                        'synthesis_status':('USED' if accepted else ('NO_CLAIMS_PASSED' if model_result and model_result.get('text') else
-                                             'PROVIDER_OR_BUDGET_UNAVAILABLE' if model_attempted else model_conf['status']))},
+                                             'PROVIDER_OR_BUDGET_UNAVAILABLE' if model_failure_type else model_conf['status']))},
         'passage_selection':{'source_count':diagnostics.get('fulltext_retrieved',0),
                             'topically_ranked_count':len(ledger),
                             'method':'original-observation title ranking, balanced category coverage, source-text relevance'},

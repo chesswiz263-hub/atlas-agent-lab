@@ -10,12 +10,14 @@ import json
 import os
 import re
 import time
+import textwrap
 from collections import defaultdict
 from typing import Any
 import httpx
 import atlas_retrieval_v25 as old
 
 MAX_QUERIES = 4
+MAX_EXTRA_QUERIES = 2  # only on missing source-text coverage
 MAX_PAPERS = 8
 MAX_ATTEMPTS = 12
 MAX_CITATIONS = 8
@@ -27,7 +29,7 @@ DARK_MATTER = {
                         ('lensing','lens','shear','cluster','mass','mapping')),
     'bullet_cluster': ('1E0657-56 Bullet Cluster lensing X-ray gas',
                        ('bullet','1e0657','lensing','x-ray','gas','offset','collision')),
-    'cmb': ('Planck cosmic microwave background anisotropy power spectrum',
+    'cmb': ('Planck 2018 CMB power spectra temperature polarization',
             ('cosmic','microwave','cmb','anisotrop','acoustic','planck','wmap','spectrum')),
 }
 MOND = ('MOND galaxy rotation curves acceleration',
@@ -36,6 +38,41 @@ NOISE = ('review','perspective','overview','modified gravity','theory of','statu
          'proceedings','comment on','meta-analysis','bibliometric')
 OBSERVATIONAL = ('observ','measur','data','survey','results','x-ray','shear','lensing',
                  'rotation','spectrum','anisotrop','planck','wmap','velocity','empirical')
+# This is a high-stakes distinction: Planck cosmic INFRARED background (CIB)
+# surveys are not measurements of CMB acoustic peaks, regardless of overlap.
+CIB_TITLE = re.compile(r'cosmic\s+(?:far[- ]?)?infrared\s+background|\binfrared\s+background\b|\bcib\b', re.I)
+CMB_TITLE = re.compile(r'\bcmb\b|cosmic\s+microwave\s+background|\bwmap\b|'
+                       r'\bplanck\b.*(?:\bcmb\b|microwave|power spectra|polarization|polarisation)', re.I)
+CMB_PASSAGE = re.compile(r'\bcmb\b|cosmic\s+microwave\s+background|'
+                         r'\btemperature\s+anisotrop|\bpolariz|\bpolarisation|acoustic\s+peak', re.I)
+FALLBACK = {
+    'cmb': 'Planck 2018 results V CMB power spectra likelihoods',
+    'bullet_cluster': 'Bullet Cluster 1E0657 lensing X ray gas mass separation',
+    'cluster_lensing': 'CLASH clusters weak strong gravitational lensing shear measurements',
+    'rotation_curves': 'SPARC observed galaxy rotation curves mass discrepancy',
+}
+
+
+def _observational_title(work:dict,cat:str)->bool:
+    title=str(work.get('title') or '')
+    lower=title.lower()
+    if cat == 'mond':return 'mond' in lower or 'modified newton' in lower
+    if CIB_TITLE.search(title) or any(x in lower for x in ('modified gravity', 'mond', 'review', 'perspective', 'bibliometric')):
+        return False
+    if cat == 'cmb':return bool(CMB_TITLE.search(title))
+    if cat == 'bullet_cluster':return any(x in lower for x in ('bullet cluster','1e0657','1e 0657'))
+    if cat == 'cluster_lensing':return ('lens' in lower or 'shear' in lower) and any(x in lower for x in ('cluster', 'clash'))
+    if cat == 'rotation_curves':return ('rotation' in lower or 'kinematic' in lower or 'velocity' in lower) and any(x in lower for x in ('galax', 'spiral', 'disk', 'sparc'))
+    return True
+
+
+def _passage_is_category_specific(source:str,category:str)->bool:
+    if category=='cmb':
+        return bool(CMB_PASSAGE.search(source)) and not bool(CIB_TITLE.search(source))
+    if category=='bullet_cluster':
+        lower=source.lower()
+        return ('bullet' in lower or '1e0657' in lower) and ('gas' in lower or 'x-ray' in lower or 'lensing' in lower)
+    return True
 
 
 def plan(question: str, history: list[dict] | None = None) -> list[dict]:
@@ -79,6 +116,24 @@ def _safe_failure(exc: Exception) -> str:
     return type(exc).__name__
 
 
+def _coherent_excerpts(content:str)->list[dict]:
+    """v2.6.1 readable, word-aligned passage windows with preserved PDF page labels.
+
+    Older 510-character slicing severed words, producing the visible
+    "ned from" / "llet cluster" artifacts and poor model quotations.
+    """
+    result=[]
+    paginated='\f' in content
+    for page, part in enumerate(content.replace('\r','').split('\f'),1):
+        for paragraph in re.split(r'\n\s*\n+',part):
+            line=' '.join(paragraph.split())
+            if len(line)<95:continue
+            for chunk in textwrap.wrap(line[:2800],width=480,break_long_words=False,break_on_hyphens=False):
+                if len(chunk)>=110:result.append({'text':chunk,'page':page if paginated else None})
+                if len(result)>=100:return result
+    return result
+
+
 async def _retrieve_work(client:httpx.AsyncClient, work:dict, aid:str) -> dict:
     html_url = 'https://arxiv.org/html/'+aid
     pdf_url = 'https://arxiv.org/pdf/'+aid
@@ -96,7 +151,7 @@ async def _retrieve_work(client:httpx.AsyncClient, work:dict, aid:str) -> dict:
     title_tokens = old.terms(title)
     if len(title_tokens & old.terms(content[:6500])) < min(2,len(title_tokens)):
         raise ValueError('Document title not corroborated')
-    passages = old._make_excerpts(content)
+    passages = _coherent_excerpts(content)
     if not passages:raise ValueError('No extractable passages')
     return {'title':title[:250],'doi':old.normalize_doi(work.get('doi')),
             'arxiv_id':aid, 'source_url':url, 'kind':kind, 'document_sha256':sha256(body).hexdigest(),
@@ -109,9 +164,13 @@ def _support_score(passage:str, category:dict, title:str) -> float:
     p_terms = old.terms(source)
     # Require a substantive match in the *fetched passage*, not metadata alone.
     hits = sum(1 for a in anchors if a in source or a in p_terms or any(t.startswith(a) for t in p_terms))
-    if hits < 2:return -1
+    if hits < 2 or not _passage_is_category_specific(source,category['category']):return -1
     score = hits/max(2,len(anchors))
     if 'observ' in source or 'measur' in source or 'data' in source:score += .16
+    # Direct findings beat introductions or literature-review passages. This is
+    # ranking, not source-claim entailment.
+    if any(x in source for x in ('we measure', 'we find', 'we present', 'our results', 'we observe', 'we show', 'we detect')):score += .3
+    if any(x in source for x in ('recently, we', 'presented a detailed', 'derived radial profiles', 'et al.')):score -= .12
     if category['category'] != 'mond' and 'mond' in source and hits<4:score -= .3
     if 'review' in title.lower():score -= .2
     return score
@@ -154,12 +213,14 @@ def choose_passages(plan_items:list[dict], papers_by_category:dict[str,list[dict
 
 async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncClient|None=None)->dict:
     objectives=plan(question,history)
-    diagnostics={'search_queries':[x['query'] for x in objectives], 'categories_requested':[x['category'] for x in objectives],
+    diagnostics={'search_queries':[], 'categories_requested':[x['category'] for x in objectives],
                  'openalex_results':0,'arxiv_candidates':0,'fulltext_attempts':0,'fulltext_retrieved':0,
-                 'fulltext_failures':[], 'selected_passages':0,
-                 'limits':{'max_queries':MAX_QUERIES,'max_papers':MAX_PAPERS,'max_attempts':MAX_ATTEMPTS,
+                 'fulltext_failures':[],'rejected_metadata':{},'rejected_passages':{},'selected_passages':0,
+                 'limits':{'max_queries':MAX_QUERIES+MAX_EXTRA_QUERIES,'max_papers':MAX_PAPERS,'max_attempts':MAX_ATTEMPTS,
                            'max_download_bytes':old.MAX_BYTES,'max_pdf_pages':old.MAX_PAGES}}
     if os.getenv('ATLAS_V26_RETRIEVAL_ENABLED','1')!='1':
+        diagnostics['categories_covered']=[]
+        diagnostics['categories_missing']=diagnostics['categories_requested'][:]
         return {'status':'DISABLED','citation_ledger':[], 'papers':[], 'diagnostics':diagnostics}
     key_source=next((k for k in ('ATLAS_OPENALEX_API_KEY','OPENALEX_API_KEY') if os.getenv(k,'').strip()),None)
     diagnostics['openalex_key_source']=key_source or 'NOT_CONFIGURED'
@@ -167,54 +228,85 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
     if owns:client=httpx.AsyncClient(timeout=httpx.Timeout(7,connect=3),follow_redirects=False,
                               headers={'User-Agent':'ATLAS-Research/2.6 (bounded scientific prototype)'})
     try:
-        # Leave ample time for the protected gateway's 90-second request timeout.
         deadline=time.monotonic()+65
-        bucket={};found=set()
-        for objective in objectives:
-            if time.monotonic()>deadline-9:
-                diagnostics['fulltext_failures'].append('RETRIEVAL_TIME_BUDGET_REACHED')
-                bucket[objective['category']]=[]
-                continue
-            params={'search.title_and_abstract':objective['query'],'per_page':'8',
+        bucket=defaultdict(list);found=set();unique_arxiv=set()
+        by_cat=defaultdict(list); fetched={}; attempted=set()
+
+        async def discover(objective:dict, phrase:str)->None:
+            if len(diagnostics['search_queries'])>=MAX_QUERIES+MAX_EXTRA_QUERIES or time.monotonic()>deadline-18:
+                return
+            diagnostics['search_queries'].append(phrase)
+            params={'search.title_and_abstract':phrase,'per_page':'8',
                     'select':'id,title,doi,type,publication_year,locations,primary_location,best_oa_location'}
             if key_source:params['api_key']=os.getenv(key_source).strip()
             try:
                 _,_,raw=await old._bounded_get(client,old.OPENALEX,params=params,limit=1_000_000)
-                parsed=json.loads(raw)
-                works=[w for w in parsed.get('results',[])[:8] if isinstance(w,dict)]
+                works=[w for w in json.loads(raw).get('results',[])[:8] if isinstance(w,dict)]
                 for w in works:found.add(w.get('id') or w.get('title'))
                 ranked=[]
                 for w in works:
                     ids=old.arxiv_identifiers(w)
-                    if ids and isinstance(w.get('title'),str):ranked.append((original_score(w,objective['category']),w,ids[0]))
-                ranked.sort(key=lambda x:x[0],reverse=True)
-                bucket[objective['category']]=ranked
-            except (httpx.HTTPError,ValueError,TypeError,KeyError) as exc:
+                    if not ids or not isinstance(w.get('title'),str):continue
+                    unique_arxiv.add(ids[0])
+                    if not _observational_title(w,objective['category']):
+                        cat=objective['category']
+                        diagnostics['rejected_metadata'][cat]=diagnostics['rejected_metadata'].get(cat,0)+1
+                        continue
+                    ranked.append((original_score(w,objective['category']),w,ids[0]))
+                # Preserve ranked candidates across the bounded targeted fallback.
+                existing={aid for _,_,aid in bucket[objective['category']]}
+                bucket[objective['category']].extend(row for row in ranked if row[2] not in existing)
+                bucket[objective['category']].sort(key=lambda x:x[0],reverse=True)
+            except (httpx.HTTPError,ValueError,TypeError,KeyError,AttributeError) as exc:
                 diagnostics['fulltext_failures'].append('OpenAlex '+objective['category']+': '+_safe_failure(exc))
-                bucket[objective['category']]=[]
+
+        async def retrieve_candidates(objectives_to_try:list[dict])->None:
+            # Exhaustive within the three-alternative bounded allowance per
+            # category, rather than stopping at first topically wrong paper.
+            for rank in range(8):
+                for objective in objectives_to_try:
+                    if time.monotonic()>deadline-12 or diagnostics['fulltext_attempts']>=MAX_ATTEMPTS or len(fetched)>=MAX_PAPERS:
+                        return
+                    cat=objective['category']
+                    if by_cat[cat]:continue
+                    candidates=bucket.get(cat,[])
+                    if rank>=len(candidates):continue
+                    _,work,aid=candidates[rank]
+                    if aid in fetched:
+                        paper=fetched[aid]
+                    elif aid in attempted:continue
+                    else:
+                        attempted.add(aid);diagnostics['fulltext_attempts']+=1
+                        try:
+                            paper=await _retrieve_work(client,work,aid)
+                            fetched[aid]=paper;diagnostics['fulltext_retrieved']+=1
+                        except (httpx.HTTPError,ValueError,TypeError,ImportError) as exc:
+                            diagnostics['fulltext_failures'].append(cat+' '+aid+': '+_safe_failure(exc))
+                            continue
+                    # Crucial: a retrieved *document* is not coverage if none of
+                    # its excerpts makes category-specific scientific contact.
+                    compatible=any(_support_score(p['text'][:500],objective,paper['title'])>=.30 for p in paper['passages'])
+                    if compatible:by_cat[cat].append(paper)
+                    else:diagnostics['rejected_passages'][cat]=diagnostics['rejected_passages'].get(cat,0)+1
+
+        for objective in objectives:
+            await discover(objective,objective['query'])
+        await retrieve_candidates(objectives)
+        # Only request additional metadata if the original budgeted objectives
+        # still lack usable full-text evidence. Prioritize the CMB gap.
+        missing=[x for x in objectives if not by_cat[x['category']]]
+        missing.sort(key=lambda o: (o['category']!='cmb',o['category']))
+        extra_count=0
+        for objective in missing:
+            if extra_count>=MAX_EXTRA_QUERIES or time.monotonic()>deadline-18:break
+            phrase=FALLBACK.get(objective['category'])
+            if not phrase or phrase in diagnostics['search_queries']:continue
+            await discover(objective,phrase)
+            extra_count+=1
+            # Resume attempts only if the discovery actually produced new candidates.
+            await retrieve_candidates([objective])
         diagnostics['openalex_results']=len(found)
-        diagnostics['arxiv_candidates']=len({x[2] for b in bucket.values() for x in b})
-        # Prioritize category coverage. On failure, attempt one alternative per category.
-        by_cat=defaultdict(list); fetched={}; attempted=set()
-        for rank in range(3):
-            for objective in objectives:
-                if time.monotonic()>deadline-15:
-                    diagnostics['fulltext_failures'].append('RETRIEVAL_TIME_BUDGET_REACHED')
-                    break
-                cat=objective['category']
-                if by_cat[cat] or diagnostics['fulltext_attempts']>=MAX_ATTEMPTS or len(fetched)>=MAX_PAPERS:continue
-                candidates=bucket.get(cat,[])
-                if rank>=len(candidates):continue
-                _,work,aid=candidates[rank]
-                if aid in fetched:
-                    by_cat[cat].append(fetched[aid]);continue
-                if aid in attempted:continue
-                attempted.add(aid);diagnostics['fulltext_attempts']+=1
-                try:
-                    paper=await _retrieve_work(client,work,aid)
-                    fetched[aid]=paper;by_cat[cat].append(paper);diagnostics['fulltext_retrieved']+=1
-                except (httpx.HTTPError,ValueError,TypeError,ImportError) as exc:
-                    diagnostics['fulltext_failures'].append(cat+' '+aid+': '+_safe_failure(exc))
+        diagnostics['arxiv_candidates']=len(unique_arxiv)
         ledger=choose_passages(objectives,by_cat)
         covered={r['evidence_category'] for r in ledger}
         diagnostics['categories_covered']=[x['category'] for x in objectives if x['category'] in covered]
