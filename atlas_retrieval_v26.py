@@ -11,6 +11,7 @@ import os
 import re
 import time
 import textwrap
+from html.parser import HTMLParser
 from collections import defaultdict
 from typing import Any
 import httpx
@@ -69,6 +70,19 @@ FALLBACK = {
     'cluster_lensing': 'CLASH clusters weak strong gravitational lensing shear measurements',
     'rotation_curves': 'SPARC observed galaxy rotation curves mass discrepancy',
 }
+
+# Curated DISCOVERY fallback only: no excerpts or scientific assertions are embedded.
+# Both identifiers and journal DOIs refer to original Planck Collaboration papers.
+# Citation eligibility still requires an actual bounded full-text fetch, validated
+# document identity and category-specific passages. ar5iv is a third-party HTML
+# rendering of an arXiv source, and is labeled accordingly, never peer-reviewed-by-fiat.
+CURATED_CMB = (
+    {'title':'Planck 2018 results. VI. Cosmological parameters',
+     'arxiv_id':'1807.06209','doi':'10.1051/0004-6361/201833910'},
+    {'title':'Planck 2018 results. V. CMB power spectra and likelihoods',
+     'arxiv_id':'1907.12875','doi':'10.1051/0004-6361/201936386'},
+)
+AR5IV_HTML = 'https://ar5iv.labs.arxiv.org/html/'
 
 
 def _observational_title(work:dict,cat:str)->bool:
@@ -190,6 +204,57 @@ async def _retrieve_work(client:httpx.AsyncClient, work:dict, aid:str) -> dict:
             'passages':passages, 'publication_year':work.get('publication_year')}
 
 
+async def _retrieve_curated_cmb_work(client:httpx.AsyncClient, work:dict) -> dict:
+    """Fetch real full text for a fixed, independently documented Planck work.
+
+    The exact arXiv ID and fixed host prevent arbitrary remote fetches; the
+    existing streaming size cap and redirect prohibition remain authoritative.
+    A metadata record or abstract alone is never considered retrieved evidence.
+    """
+    aid=work['arxiv_id']
+    if aid not in {x['arxiv_id'] for x in CURATED_CMB}:
+        raise ValueError('Not an approved CMB fallback work')
+    url=AR5IV_HTML+aid
+    _,mime,body=await old._bounded_get(client,url,limit=old.MAX_BYTES)
+    if 'text/html' not in mime.lower() or b'<html' not in body[:4096].lower():
+        raise ValueError('No HTML full-text document')
+    full=old._decode_html(body)
+    # Require the first actual HTML article heading to corroborate identity,
+    # not generic title-related words appearing later in the abstract.
+    class FirstHeading(HTMLParser):
+        def __init__(self):
+            super().__init__();self.seen=False;self.inside=False;self.parts=[]
+        def handle_starttag(self,tag,attrs):
+            if tag=='h1' and not self.seen:
+                self.seen=True;self.inside=True
+        def handle_endtag(self,tag):
+            if tag=='h1':self.inside=False
+        def handle_data(self,data):
+            if self.inside:self.parts.append(data)
+    heading=FirstHeading();heading.feed(body.decode('utf-8','replace'))
+    title=work['title']
+    normal=lambda text:re.sub(r'\s+',' ',re.sub(r'[^\w]+',' ',text.casefold())).strip()
+    if not heading.parts or normal(title) not in normal(' '.join(heading.parts)):
+        raise ValueError('CMB full-text title was not corroborated')
+    # Papers with hundreds of affiliations can exhaust the fixed passage cap
+    # *before the abstract*. Start at the article's abstract or introduction,
+    # rather than treating author affiliations as scientific evidence.
+    match=re.search(r'(?:^|\n\s*\n)\s*Abstract\s*(?:\n|$)',full,re.I)
+    if match is None:
+        match=re.search(r'(?:^|\n\s*\n)\s*(?:1\.?\s+Introduction|I\.?\s+Introduction)\b',full,re.I)
+    if match is None:
+        raise ValueError('No article body marker in CMB full text')
+    content=full[match.start():]
+    passages=_coherent_excerpts(content)
+    if not passages:raise ValueError('No extractable body passages')
+    return {'title':title,'doi':work['doi'],'arxiv_id':aid,'source_url':url,
+            'kind':'ar5iv rendered arXiv full text',
+            'publication_status':'AR5IV_RENDERED_ARXIV_SOURCE_PEER_REVIEW_NOT_VERIFIED',
+            'source_note':'ar5iv third-party rendering of an arXiv source; peer review not verified',
+            'document_sha256':sha256(body).hexdigest(),
+            'passages':passages,'publication_year':2020}
+
+
 def _support_score(passage:str, category:dict, title:str) -> float:
     anchors = set(category['anchors'])
     source = passage.lower()
@@ -238,7 +303,7 @@ def choose_passages(plan_items:list[dict], papers_by_category:dict[str,list[dict
                       (f"{paper['kind']} page {passage['page']}, passage {index+1}" if passage.get('page') else f"{paper['kind']} passage {index+1}"),
                      'excerpt':excerpt,'excerpt_sha256':h,'document_sha256':paper['document_sha256'],
                      'verification':'SOURCE_TEXT_LOCATED_CLAIM_NOT_ENTAILED',
-                     'publication_status':'ARXIV_REPOSITORY_COPY_PEER_REVIEW_NOT_VERIFIED',
+                     'publication_status':paper.get('publication_status','ARXIV_REPOSITORY_COPY_PEER_REVIEW_NOT_VERIFIED'),
                      'relevance_score':round(score,3)}
                 selected.append(rec);seen_hash.add(h);doc_counts[paper['arxiv_id']]+=1
                 break
@@ -251,6 +316,7 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
     diagnostics={'search_queries':[], 'categories_requested':[x['category'] for x in objectives],
                  'openalex_results':0,'arxiv_candidates':0,'fulltext_attempts':0,'fulltext_retrieved':0,
                  'fulltext_failures':[],'rejected_metadata':{},'rejected_passages':{},'selected_passages':0,
+                 'curated_cmb_fulltext_attempts':0,'curated_cmb_fulltext_accepted':0,
                  'limits':{'max_queries':MAX_QUERIES+MAX_EXTRA_QUERIES,'max_papers':MAX_PAPERS,'max_attempts':MAX_ATTEMPTS,
                            'max_download_bytes':old.MAX_BYTES,'max_pdf_pages':old.MAX_PAGES}}
     if os.getenv('ATLAS_V26_RETRIEVAL_ENABLED','1')!='1':
@@ -342,6 +408,33 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
             extra_count+=1
             # Resume attempts only if the discovery actually produced new candidates.
             await retrieve_candidates([objective])
+        # OpenAlex can miss these large Planck originals in its first eight
+        # results even after a fallback search; their arXiv PDFs can also exceed
+        # the strictly enforced 4 MB download cap. A fixed, independently vetted
+        # identity list provides another *retrieval path*, not canned evidence.
+        cmb_obj=next((obj for obj in objectives if obj['category']=='cmb'),None)
+        if (cmb_obj and not by_cat['cmb'] and
+                os.getenv('ATLAS_V26_CMB_CURATED_FALLBACK','1')=='1'):
+            for work in CURATED_CMB:
+                if (by_cat['cmb'] or time.monotonic()>deadline-8 or
+                        diagnostics['fulltext_attempts']>=MAX_ATTEMPTS or len(fetched)>=MAX_PAPERS):
+                    break
+                aid=work['arxiv_id']
+                diagnostics['curated_cmb_fulltext_attempts']+=1
+                diagnostics['fulltext_attempts']+=1
+                try:
+                    paper=await _retrieve_curated_cmb_work(client,work)
+                    if any(_support_score(p['text'][:500],cmb_obj,paper['title'])>=.30
+                           for p in paper['passages']):
+                        if aid not in fetched:
+                            diagnostics['fulltext_retrieved']+=1
+                        fetched[aid]=paper
+                        by_cat['cmb'].append(paper)
+                        diagnostics['curated_cmb_fulltext_accepted']+=1
+                    else:
+                        diagnostics['rejected_passages']['cmb']=diagnostics['rejected_passages'].get('cmb',0)+1
+                except (httpx.HTTPError,ValueError,TypeError,ImportError) as exc:
+                    diagnostics['fulltext_failures'].append('cmb curated '+aid+': '+_safe_failure(exc))
         diagnostics['openalex_results']=len(found)
         diagnostics['arxiv_candidates']=len(unique_arxiv)
         ledger=choose_passages(objectives,by_cat)
@@ -352,6 +445,6 @@ async def gather(question:str,*,history:list[dict]|None=None,client:httpx.AsyncC
         status='PASSAGES_LOCATED' if ledger else 'NO_RELEVANT_PASSAGES' if fetched else 'FULLTEXT_UNAVAILABLE' if attempted else 'NO_ARXIV_OPENALEX_CANDIDATES'
         return {'status':status,'citation_ledger':ledger,'diagnostics':diagnostics,
                 'papers':[{'title':p['title'],'arxiv_id':p['arxiv_id'],'doi':p['doi'], 'source_url':p['source_url'],
-                           'version':'arXiv repository copy; peer review not verified'} for p in fetched.values()]}
+                           'version':p.get('source_note','arXiv repository copy; peer review not verified')} for p in fetched.values()]}
     finally:
         if owns:await client.aclose()

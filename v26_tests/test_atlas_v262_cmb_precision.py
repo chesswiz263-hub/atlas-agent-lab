@@ -61,6 +61,7 @@ def test_live_report_pattern_is_rejected_and_targeted_fallback_recovers(monkeypa
 
 def test_only_wrong_paper_results_in_honest_gap(monkeypatch):
     monkeypatch.setenv('ATLAS_V26_RETRIEVAL_ENABLED','1')
+    monkeypatch.setenv('ATLAS_V26_CMB_CURATED_FALLBACK','0')  # explicitly exercise no-fallback mode
     def route(request):
         assert request.url.host=='api.openalex.org'
         return httpx.Response(200,json={'results':[row('2106.07666',WRONG)]})

@@ -112,7 +112,7 @@ async def run_chat_v26(query:ChatQuery) -> dict:
                         'source_count':len(ledger),'model_status':model_conf['status'],
                         'source_text_status':evidence['status'],'retrieval_phase':evidence['status']},
         'synthesis_status':synthesis_status,
-        'limitations':['Citations resolve only to fetched arXiv-hosted repository copies, whose peer-review status is not verified.',
+        'limitations':['Citations resolve to fetched full-text copies: ar5iv is a third-party rendering of arXiv text, and peer-review status is not independently verified.',
                        'Quote matching and lexical support checks cannot rule out all misinterpretations or contradictions.',
                        'Client-provided bounded history supplies context only and is not trusted as evidence.',
                        'The existing app budget ledger uses estimated charges; provider-side billing caps are separate.'],
